@@ -14,11 +14,24 @@ trait HasFirestoreMirror
     public static function bootHasFirestoreMirror(): void
     {
         static::saved(function ($model) {
-            Firestore::collection($model->getFirestoreCollectionName())
-                ->document($model->getKey())
-                ->set($model->toFirestoreDocument());
+            $model->mirrorToFirestore();
         });
     }
+
+    /**
+     * Mirror model to firestore.
+     *
+     * @return self
+     */
+    public function mirrorToFirestore()
+    {
+        Firestore::collection($this->getFirestoreCollectionName())
+            ->document($this->getKey())
+            ->set($this->toFirestoreDocument());
+
+        return $this;
+    }
+
 
     /**
      * Convert model to firestore document.
