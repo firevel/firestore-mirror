@@ -1,0 +1,22 @@
+{
+    "name": "firevel/firestore-mirror",
+    "description": "Mirror Laravel model inside Firestore collection.",
+    "keywords": ["laravel", "firevel", "model", "firestore"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Michael Slowik",
+            "email": "michael.slowik@firevel.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Firevel\\FirestoreMirror\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "firevel/firestore": "^1.0"
+    }
+}
