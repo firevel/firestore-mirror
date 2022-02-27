@@ -12,9 +12,9 @@ composer require firevel/firestore-mirror
 Add trait `\Firevel\FirestoreMirror\HasFirestoreMirror;` to the model you would like to mirror.
 
 
-### Configuration
+## Configuration
 
-## Collection
+### Collection
 
 By default model will be stored inside collection matching model table name. Use `$firestoreCollection` to customize collection name, for example:
 ```
@@ -28,7 +28,7 @@ By default model will be stored inside collection matching model table name. Use
 
 Create `public function getFirestoreCollectionName()` method to customize collection name (by default table name).
 
-## Document
+### Document
 
 Create `toFirestoreDocument` method to customize document schema. By default:
 ```
