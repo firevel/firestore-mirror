@@ -26,7 +26,7 @@ trait HasFirestoreMirror
     public function mirrorToFirestore()
     {
         Firestore::collection($this->getFirestoreCollectionName())
-            ->document($this->getKey())
+            ->document($this->getFirestoreDocumentId())
             ->set($this->toFirestoreDocument());
 
         return $this;
@@ -41,6 +41,16 @@ trait HasFirestoreMirror
     public function toFirestoreDocument()
     {
         return $this->attributesToArray();
+    }
+
+    /**
+     * Get document id used for mirroring.
+     *
+     * @return mixed
+     */
+    public function getFirestoreDocumentId()
+    {
+        return $this->getKey();
     }
 
     /**
