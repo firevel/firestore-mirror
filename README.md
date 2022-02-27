@@ -14,6 +14,8 @@ Add trait `\Firevel\FirestoreMirror\HasFirestoreMirror;` to the model you would 
 
 ### Configuration
 
+## Collection
+
 By default model will be stored inside collection matching model table name. Use `$firestoreCollection` to customize collection name, for example:
 ```
     /**
@@ -24,7 +26,11 @@ By default model will be stored inside collection matching model table name. Use
     public $firestoreCollection = 'users';
 ```
 
-Extend `toFirestoreDocument` method to customize document schema. By default:
+Create `public function getFirestoreCollectionName()` method to customize collection name (by default table name).
+
+## Document
+
+Create `toFirestoreDocument` method to customize document schema. By default:
 ```
     /**
      * Convert model to firestore document.
@@ -37,5 +43,4 @@ Extend `toFirestoreDocument` method to customize document schema. By default:
     }
 ```
 
-Extend `getFirestoreCollectionName` method to generate dynamic collection name.
-
+Create `public function getFirestoreDocumentId()` method to customize document id (model key by default).
