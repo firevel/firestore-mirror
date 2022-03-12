@@ -16,6 +16,10 @@ trait HasFirestoreMirror
         static::saved(function ($model) {
             $model->mirrorToFirestore();
         });
+
+        static::deleting(function ($model) {
+            $model->deleteFromFirestore();
+        });
     }
 
     /**
@@ -32,6 +36,19 @@ trait HasFirestoreMirror
         return $this;
     }
 
+    /**
+     * Delete model from firestore.
+     *
+     * @return self
+     */
+    public function deleteFromFirestore()
+    {
+        Firestore::collection($this->getFirestoreCollectionName())
+            ->document($this->getFirestoreDocumentId())
+            ->delete();
+
+        return $this;
+    }
 
     /**
      * Convert model to firestore document.
