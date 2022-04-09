@@ -43,4 +43,15 @@ Create `toFirestoreDocument` method to customize document schema. By default:
     }
 ```
 
-Create `public function getFirestoreDocumentId()` method to customize document id (model key by default).
+Create `public function getFirestoreDocumentId()` method to customize document id. By default:
+```
+    /**
+     * Get document id used for mirroring.
+     *
+     * @return mixed
+     */
+    public function getFirestoreDocumentId()
+    {
+        return $this->getKey();
+    }
+```
