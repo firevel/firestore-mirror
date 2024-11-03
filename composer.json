@@ -18,5 +18,12 @@
     "minimum-stability": "dev",
     "require": {
         "firevel/firestore": "^1.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Firevel\\FirestoreMirror\\FirestoreMirrorServiceProvider"
+            ]
+        }
     }
 }
