@@ -1,57 +1,89 @@
 # Laravel Firestore Mirror
 
-This package can be used to store copy of Laravel model inside Firestore collection.
+This package allows you to store a copy of a Laravel model inside a Firestore collection, keeping it in sync with your application's database.
 
 ## Installation
 
-Install package:
-```
+Install the package using Composer:
+
+```sh
 composer require firevel/firestore-mirror
 ```
 
-Add trait `\Firevel\FirestoreMirror\HasFirestoreMirror;` to the model you would like to mirror.
+Then, add the `\Firevel\FirestoreMirror\HasFirestoreMirror` trait to any model you want to mirror in Firestore:
+```php
+use Firevel\FirestoreMirror\HasFirestoreMirror;
+use Illuminate\Database\Eloquent\Model;
 
+class User extends Model
+{
+    use HasFirestoreMirror;
+}
+```
 
 ## Configuration
 
-### Collection
+### Firestore Collection
 
-By default model will be stored inside collection matching model table name. Use `$firestoreCollection` to customize collection name, for example:
+By default, each model will be stored in a Firestore collection that matches its database table name. To customize the collection name, define the $firestoreCollection property in your model:
+```php
+/**
+ * Firestore collection name.
+ *
+ * @var string
+ */
+public $firestoreCollection = 'users';
 ```
-    /**
-     * Firestore collection name.
-     *
-     * @var string
-     */
-    public $firestoreCollection = 'users';
-```
 
-Create `public function getFirestoreCollectionName()` method to customize collection name (by default table name).
-
-### Document
-
-Create `toFirestoreDocument` method to customize document schema. By default:
-```
-    /**
-     * Convert model to firestore document.
-     *
-     * @return array
-     */
-    public function toFirestoreDocument()
-    {
-        return $this->attributesToArray();
+Alternatively, you can define a getFirestoreCollectionName() method to dynamically determine the collection name:
+```php
+/**
+ * Get firestore collection used for mirroring.
+ *
+ * @return string
+ */
+public function getFirestoreCollectionName()
+{
+    if (empty($this->firestoreCollection)) {
+        return $this->getTable();
     }
+
+    return $this->firestoreCollection;
+}
+```
+### Firestore Document
+
+To customize the document schema stored in Firestore, define a toFirestoreDocument() method in your model. By default, all model attributes are converted to an array:
+```php
+/**
+ * Convert the model to a Firestore document.
+ *
+ * @return array
+ */
+public function toFirestoreDocument()
+{
+    return $this->attributesToArray();
+}
 ```
 
-Create `public function getFirestoreDocumentId()` method to customize document id. By default:
+### Firestore Document ID
+
+By default, the document ID in Firestore matches the model’s primary key. You can customize this by defining a getFirestoreDocumentId() method:
+```php
+/**
+ * Get the Firestore document ID used for mirroring.
+ *
+ * @return mixed
+ */
+public function getFirestoreDocumentId()
+{
+    return $this->getKey(); // Default: model's primary key
+}
 ```
-    /**
-     * Get document id used for mirroring.
-     *
-     * @return mixed
-     */
-    public function getFirestoreDocumentId()
-    {
-        return $this->getKey();
-    }
-```
+
+## Usage
+
+Once the trait is added, the package will automatically mirror changes in your model to Firestore. The following actions trigger updates:
+- Creating a new model instance
+- Updating an existing model
+- Deleting a model instance (removes the document from Firestore)
