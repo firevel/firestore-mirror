@@ -1,16 +1,37 @@
 # Laravel Firestore Mirror
 
-This package allows you to store a copy of a Laravel model inside a Firestore collection, keeping it in sync with your application's database.
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/firevel/firestore-mirror.svg?style=flat-square)](https://packagist.org/packages/firevel/firestore-mirror)
+[![Total Downloads](https://img.shields.io/packagist/dt/firevel/firestore-mirror.svg?style=flat-square)](https://packagist.org/packages/firevel/firestore-mirror)
+[![CI](https://github.com/firevel/firestore-mirror/actions/workflows/ci.yml/badge.svg)](https://github.com/firevel/firestore-mirror/actions/workflows/ci.yml)
+
+Automatically sync your Laravel Eloquent models to Google Firestore collections in real-time. This package provides a seamless way to mirror your database records to Firestore, enabling powerful real-time features and offline capabilities for your applications.
+
+## Features
+
+- 🔄 **Automatic Synchronization**: Changes to your Eloquent models are automatically reflected in Firestore
+- 🚀 **Batch Operations**: Efficiently sync entire collections using Firestore's batch API
+- 🎯 **Flexible Configuration**: Customize collection names, document IDs, and document structure
+- 🧩 **Simple Integration**: Just add a trait to your existing Eloquent models
+- ⚡ **Performance Optimized**: Uses Firestore batch operations for bulk updates
+
+## Requirements
+
+- PHP 8.0 or higher
+- Laravel 8.0 or higher  
+- [firevel/firestore](https://github.com/firevel/firestore) package
 
 ## Installation
 
 Install the package using Composer:
 
-```sh
+```bash
 composer require firevel/firestore-mirror
 ```
 
-Then, add the `\Firevel\FirestoreMirror\HasFirestoreMirror` trait to any model you want to mirror in Firestore:
+## Quick Start
+
+Add the `HasFirestoreMirror` trait to any Eloquent model you want to sync with Firestore:
+
 ```php
 use Firevel\FirestoreMirror\HasFirestoreMirror;
 use Illuminate\Database\Eloquent\Model;
@@ -18,72 +39,209 @@ use Illuminate\Database\Eloquent\Model;
 class User extends Model
 {
     use HasFirestoreMirror;
+    
+    // Optional: Customize the Firestore collection name
+    public $firestoreCollection = 'users';
+    
+    // Optional: Customize the document structure
+    public function toFirestoreDocument()
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'created_at' => $this->created_at->toIso8601String(),
+        ];
+    }
 }
 ```
+
+That's it! Your User model will now automatically sync to Firestore whenever you create, update, or delete records.
 
 ## Configuration
 
-### Firestore Collection
+### Customizing Collection Names
 
-By default, each model will be stored in a Firestore collection that matches its database table name. To customize the collection name, define the $firestoreCollection property in your model:
-```php
-/**
- * Firestore collection name.
- *
- * @var string
- */
-public $firestoreCollection = 'users';
-```
+By default, the Firestore collection name matches your model's database table name. You can customize this in two ways:
 
-Alternatively, you can define a getFirestoreCollectionName() method to dynamically determine the collection name:
+#### Static Collection Name
 ```php
-/**
- * Get firestore collection used for mirroring.
- *
- * @return string
- */
-public function getFirestoreCollectionName()
+class User extends Model
 {
-    if (empty($this->firestoreCollection)) {
-        return $this->getTable();
-    }
-
-    return $this->firestoreCollection;
+    use HasFirestoreMirror;
+    
+    public $firestoreCollection = 'app_users';
 }
 ```
-### Firestore Document
 
-To customize the document schema stored in Firestore, define a toFirestoreDocument() method in your model. By default, all model attributes are converted to an array:
+#### Dynamic Collection Name
 ```php
-/**
- * Convert the model to a Firestore document.
- *
- * @return array
- */
+class User extends Model
+{
+    use HasFirestoreMirror;
+    
+    public function getFirestoreCollectionName()
+    {
+        return 'users_' . $this->tenant_id;
+    }
+}
+```
+
+### Customizing Document Structure
+
+Control exactly what data gets synced to Firestore by overriding the `toFirestoreDocument()` method:
+
+```php
 public function toFirestoreDocument()
 {
-    return $this->attributesToArray();
+    return [
+        'id' => $this->id,
+        'name' => $this->name,
+        'email' => $this->email,
+        'role' => $this->role,
+        'metadata' => [
+            'last_login' => $this->last_login?->toIso8601String(),
+            'verified' => $this->email_verified_at !== null,
+        ],
+        'updated_at' => $this->updated_at->toIso8601String(),
+    ];
 }
 ```
 
-### Firestore Document ID
+### Customizing Document IDs
 
-By default, the document ID in Firestore matches the model’s primary key. You can customize this by defining a getFirestoreDocumentId() method:
+By default, the Firestore document ID matches your model's primary key. Override this behavior:
+
 ```php
-/**
- * Get the Firestore document ID used for mirroring.
- *
- * @return mixed
- */
 public function getFirestoreDocumentId()
 {
-    return $this->getKey(); // Default: model's primary key
+    return $this->uuid; // Use a UUID field instead
 }
 ```
 
 ## Usage
 
-Once the trait is added, the package will automatically mirror changes in your model to Firestore. The following actions trigger updates:
-- Creating a new model instance
-- Updating an existing model
-- Deleting a model instance (removes the document from Firestore)
+### Automatic Syncing
+
+Once you've added the `HasFirestoreMirror` trait, your models will automatically sync to Firestore on these events:
+
+- **Create**: New model instances are added to Firestore
+- **Update**: Changes to existing models are synced to Firestore
+- **Delete**: Deleted models are removed from Firestore
+
+```php
+// This will automatically create a document in Firestore
+$user = User::create([
+    'name' => 'John Doe',
+    'email' => 'john@example.com'
+]);
+
+// This will automatically update the document in Firestore
+$user->update(['name' => 'Jane Doe']);
+
+// This will automatically delete the document from Firestore
+$user->delete();
+```
+
+### Manual Syncing
+
+You can manually sync individual models:
+
+```php
+$user = User::find(1);
+$user->mirrorToFirestore(); // Manually sync to Firestore
+```
+
+### Batch Syncing Collections
+
+The package provides a powerful `mirrorToFirestore()` collection macro for efficiently syncing multiple models at once using Firestore's batch operations:
+
+```php
+// Sync all users to Firestore
+User::all()->mirrorToFirestore();
+
+// Sync filtered collections
+User::where('active', true)->get()->mirrorToFirestore();
+
+// Sync users with relationships loaded
+User::with('posts')->get()->mirrorToFirestore();
+
+// Sync paginated results
+User::paginate(100)->mirrorToFirestore();
+```
+
+The batch operation is atomic - either all documents are synced successfully, or none are.
+
+### Deleting from Firestore
+
+To manually delete a model from Firestore without deleting it from your database:
+
+```php
+$user = User::find(1);
+$user->deleteFromFirestore();
+```
+
+## Advanced Usage
+
+### Conditional Syncing
+
+You might want to sync only certain models based on conditions:
+
+```php
+class User extends Model
+{
+    use HasFirestoreMirror;
+    
+    public function shouldMirrorToFirestore()
+    {
+        return $this->is_active && $this->email_verified_at !== null;
+    }
+    
+    public function mirrorToFirestore()
+    {
+        if ($this->shouldMirrorToFirestore()) {
+            return parent::mirrorToFirestore();
+        }
+        
+        return $this;
+    }
+}
+```
+
+### Multi-Tenant Applications
+
+For multi-tenant applications, you can dynamically set collection names:
+
+```php
+class Order extends Model
+{
+    use HasFirestoreMirror;
+    
+    public function getFirestoreCollectionName()
+    {
+        return "tenants/{$this->tenant_id}/orders";
+    }
+}
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+composer test
+```
+
+Run a specific test:
+
+```bash
+vendor/bin/phpunit tests/Unit/HasFirestoreMirrorTest.php
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
