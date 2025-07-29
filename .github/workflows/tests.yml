@@ -49,7 +49,7 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php }}
-        extensions: mbstring, dom, fileinfo, json, openssl, curl, zip, pcntl
+        extensions: mbstring, dom, fileinfo, json, openssl, curl, zip, pcntl, grpc
         coverage: none
         
     - name: Install dependencies
