@@ -183,30 +183,72 @@ $user->deleteFromFirestore();
 
 ## Advanced Usage
 
+### Disabling Syncing Temporarily
+
+You can temporarily disable Firestore syncing for specific operations using the `withoutSyncingToFirestore()` method:
+
+```php
+// Disable syncing for a single operation
+User::withoutSyncingToFirestore(function () {
+    User::create([
+        'name' => 'John Doe',
+        'email' => 'john@example.com'
+    ]);
+});
+
+// Disable syncing for multiple operations
+User::withoutSyncingToFirestore(function () {
+    // None of these will sync to Firestore
+    $user = User::create(['name' => 'Jane']);
+    $user->update(['email' => 'jane@example.com']);
+
+    User::find(1)->update(['status' => 'inactive']);
+});
+
+// The callback return value is passed through
+$user = User::withoutSyncingToFirestore(function () {
+    return User::create(['name' => 'Test User']);
+});
+```
+
+This is particularly useful for:
+- Importing large datasets without Firestore overhead
+- Running database seeders and factories during testing
+- Performing bulk operations that you'll sync manually later
+- Temporary data that doesn't need to be mirrored
+
 ### Conditional Syncing
 
-You might want to sync only certain models based on conditions:
+The package provides built-in support for conditional syncing. Override the `shouldMirrorToFirestore()` method to control when models should be synced to Firestore:
 
 ```php
 class User extends Model
 {
     use HasFirestoreMirror;
-    
+
+    /**
+     * Determine if the model should be mirrored to Firestore.
+     *
+     * @return bool
+     */
     public function shouldMirrorToFirestore()
     {
+        // Only mirror active users with verified emails
         return $this->is_active && $this->email_verified_at !== null;
-    }
-    
-    public function mirrorToFirestore()
-    {
-        if ($this->shouldMirrorToFirestore()) {
-            return parent::mirrorToFirestore();
-        }
-        
-        return $this;
     }
 }
 ```
+
+When `shouldMirrorToFirestore()` returns `false`:
+- The model will not be synced to Firestore on create/update
+- The model will not be deleted from Firestore on deletion
+- Both `mirrorToFirestore()` and `deleteFromFirestore()` will return early without making Firestore calls
+
+This is useful for:
+- Skipping sync for draft or incomplete records
+- Conditional syncing based on user roles or permissions
+- Implementing soft-delete patterns where you want to keep Firestore data
+- Performance optimization by reducing unnecessary Firestore writes
 
 ### Multi-Tenant Applications
 
