@@ -13,6 +13,7 @@ Automatically sync your Laravel Eloquent models to Google Firestore collections 
 - 🎯 **Flexible Configuration**: Customize collection names, document IDs, and document structure
 - 🧩 **Simple Integration**: Just add a trait to your existing Eloquent models
 - ⚡ **Performance Optimized**: Uses Firestore batch operations for bulk updates
+- 🛠️ **Artisan Command**: Built-in command for bulk mirroring with progress tracking and chunked processing
 
 ## Requirements
 
@@ -171,6 +172,43 @@ User::paginate(100)->mirrorToFirestore();
 ```
 
 The batch operation is atomic - either all documents are synced successfully, or none are.
+
+### Artisan Command for Bulk Mirroring
+
+For large-scale operations or initial data migration, use the included Artisan command to mirror all records of a model to Firestore:
+
+```bash
+# Mirror all users to Firestore
+php artisan firestore:mirror "App\Models\User"
+
+# Mirror with custom chunk size (default: 100)
+php artisan firestore:mirror "App\Models\User" --chunk=500
+
+# Mirror any model with the HasFirestoreMirror trait
+php artisan firestore:mirror "App\Models\Post" --chunk=200
+```
+
+**Features:**
+- 📊 **Progress Bar**: Real-time progress feedback during the mirror operation
+- 🔄 **Chunked Processing**: Processes records in configurable batches to prevent memory issues
+- ⚡ **Batch Operations**: Uses Firestore batch API for optimal performance
+- ✅ **Validation**: Ensures the model exists and uses the `HasFirestoreMirror` trait
+
+**Example Output:**
+```
+Starting mirror process for App\Models\User...
+Total records to mirror: 1500
+1500/1500 [████████████████████████████] 100%
+Successfully mirrored 1500 records to Firestore.
+```
+
+**When to Use:**
+- Initial data migration when setting up Firestore mirroring
+- Recovering from sync failures or data inconsistencies
+- Re-syncing data after changing `toFirestoreDocument()` structure
+- Batch operations on very large collections (thousands+ records)
+
+**Note:** The command respects the `shouldMirrorToFirestore()` method and will skip records that shouldn't be mirrored. For programmatic batch operations within your application code, use the collection macro `->mirrorToFirestore()` instead.
 
 ### Deleting from Firestore
 
