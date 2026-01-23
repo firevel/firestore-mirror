@@ -26,11 +26,23 @@ class FirestoreMirrorServiceProvider extends ServiceProvider
                     return;
                 }
 
-                $batch->set(
-                    Firestore::collection($model->getFirestoreCollectionName())
-                        ->document($model->getFirestoreDocumentId()),
-                    $model->toFirestoreDocument()
-                );
+                // Use resolveFirestoreCollections if available, otherwise fall back to getFirestoreCollectionName
+                if (method_exists($model, 'resolveFirestoreCollections')) {
+                    $collections = $model->resolveFirestoreCollections();
+                } else {
+                    $collection = $model->getFirestoreCollectionName();
+                    $collections = is_array($collection) ? $collection : [$collection];
+                }
+
+                $documentId = $model->getFirestoreDocumentId();
+                $document = $model->toFirestoreDocument();
+
+                foreach ($collections as $collection) {
+                    $batch->set(
+                        Firestore::collection($collection)->document($documentId),
+                        $document
+                    );
+                }
             });
 
             $batch->commit();

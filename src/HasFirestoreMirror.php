@@ -68,9 +68,22 @@ trait HasFirestoreMirror
             return $this;
         }
 
-        Firestore::collection($this->getFirestoreCollectionName())
-            ->document($this->getFirestoreDocumentId())
-            ->set($this->toFirestoreDocument());
+        $collections = $this->resolveFirestoreCollections();
+        $documentId = $this->getFirestoreDocumentId();
+        $document = $this->toFirestoreDocument();
+
+        if (count($collections) === 1) {
+            Firestore::collection($collections[0])
+                ->document($documentId)
+                ->set($document);
+        } else {
+            $batch = Firestore::batch();
+            foreach ($collections as $collection) {
+                $ref = Firestore::collection($collection)->document($documentId);
+                $batch->set($ref, $document);
+            }
+            $batch->commit();
+        }
 
         return $this;
     }
@@ -86,9 +99,21 @@ trait HasFirestoreMirror
             return $this;
         }
 
-        Firestore::collection($this->getFirestoreCollectionName())
-            ->document($this->getFirestoreDocumentId())
-            ->delete();
+        $collections = $this->resolveFirestoreCollections();
+        $documentId = $this->getFirestoreDocumentId();
+
+        if (count($collections) === 1) {
+            Firestore::collection($collections[0])
+                ->document($documentId)
+                ->delete();
+        } else {
+            $batch = Firestore::batch();
+            foreach ($collections as $collection) {
+                $ref = Firestore::collection($collection)->document($documentId);
+                $batch->delete($ref);
+            }
+            $batch->commit();
+        }
 
         return $this;
     }
@@ -130,7 +155,7 @@ trait HasFirestoreMirror
     /**
      * Get firestore collection used for mirroring.
      *
-     * @return string
+     * @return string|array
      */
     public function getFirestoreCollectionName()
     {
@@ -139,5 +164,37 @@ trait HasFirestoreMirror
         }
 
         return $this->firestoreCollection;
+    }
+
+    /**
+     * Get firestore collections used for mirroring.
+     *
+     * @return array|null
+     */
+    public function getFirestoreCollectionNames(): ?array
+    {
+        return null;
+    }
+
+    /**
+     * Resolve the firestore collections to mirror to.
+     *
+     * @return array
+     */
+    public function resolveFirestoreCollections(): array
+    {
+        $collections = $this->getFirestoreCollectionNames();
+
+        if ($collections !== null) {
+            return $collections;
+        }
+
+        $collection = $this->getFirestoreCollectionName();
+
+        if (is_array($collection)) {
+            return $collection;
+        }
+
+        return [$collection];
     }
 }

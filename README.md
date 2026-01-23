@@ -10,6 +10,7 @@ Automatically sync your Laravel Eloquent models to Google Firestore collections 
 
 - 🔄 **Automatic Synchronization**: Changes to your Eloquent models are automatically reflected in Firestore
 - 🚀 **Batch Operations**: Efficiently sync entire collections using Firestore's batch API
+- 📂 **Multiple Collections**: Mirror a single model to multiple Firestore collections for denormalization
 - 🎯 **Flexible Configuration**: Customize collection names, document IDs, and document structure
 - 🧩 **Simple Integration**: Just add a trait to your existing Eloquent models
 - ⚡ **Performance Optimized**: Uses Firestore batch operations for bulk updates
@@ -119,6 +120,54 @@ public function getFirestoreDocumentId()
     return $this->uuid; // Use a UUID field instead
 }
 ```
+
+### Mirroring to Multiple Collections
+
+You can mirror a single model to multiple Firestore collections. This is useful for denormalization patterns common in Firestore, where you might want the same data available in different collections for efficient querying.
+
+#### Using Property
+```php
+class User extends Model
+{
+    use HasFirestoreMirror;
+
+    // Mirror to multiple collections
+    public $firestoreCollection = ['users', 'public_profiles'];
+}
+```
+
+#### Using getFirestoreCollectionName() Method
+```php
+class User extends Model
+{
+    use HasFirestoreMirror;
+
+    public function getFirestoreCollectionName()
+    {
+        return ['users', 'public_profiles', 'search_index'];
+    }
+}
+```
+
+#### Using getFirestoreCollectionNames() Method (Recommended)
+```php
+class User extends Model
+{
+    use HasFirestoreMirror;
+
+    public function getFirestoreCollectionNames(): array
+    {
+        return ['users', 'public_profiles'];
+    }
+}
+```
+
+When mirroring to multiple collections:
+- All collections receive the same document ID and document structure
+- Write and delete operations use Firestore's batch API for atomicity
+- If you need different document structures per collection, override `toFirestoreDocument()` with conditional logic
+
+**Priority Order**: If multiple methods are defined, `getFirestoreCollectionNames()` takes precedence over `getFirestoreCollectionName()`, which takes precedence over the `$firestoreCollection` property.
 
 ## Usage
 

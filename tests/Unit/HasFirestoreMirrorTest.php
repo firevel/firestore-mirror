@@ -331,4 +331,259 @@ class HasFirestoreMirrorTest extends TestCase
 
         $this->assertFalse($modelClass::isSyncingToFirestoreDisabled());
     }
+
+    public function testResolveFirestoreCollectionsWithSingleCollection()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $table = 'tests';
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+        };
+
+        $this->assertEquals(['tests'], $model->resolveFirestoreCollections());
+    }
+
+    public function testResolveFirestoreCollectionsWithArrayFromProperty()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $table = 'tests';
+            public $firestoreCollection = ['collection_a', 'collection_b'];
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+        };
+
+        $this->assertEquals(['collection_a', 'collection_b'], $model->resolveFirestoreCollections());
+    }
+
+    public function testResolveFirestoreCollectionsWithArrayFromMethod()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $table = 'tests';
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+
+            public function getFirestoreCollectionName()
+            {
+                return ['collection_x', 'collection_y'];
+            }
+        };
+
+        $this->assertEquals(['collection_x', 'collection_y'], $model->resolveFirestoreCollections());
+    }
+
+    public function testResolveFirestoreCollectionsWithGetFirestoreCollectionNames()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $table = 'tests';
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+
+            public function getFirestoreCollectionNames(): array
+            {
+                return ['primary', 'secondary', 'tertiary'];
+            }
+        };
+
+        $this->assertEquals(['primary', 'secondary', 'tertiary'], $model->resolveFirestoreCollections());
+    }
+
+    public function testGetFirestoreCollectionNamesTakesPrecedence()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $table = 'tests';
+            public $firestoreCollection = ['from_property'];
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+
+            public function getFirestoreCollectionName()
+            {
+                return ['from_method'];
+            }
+
+            public function getFirestoreCollectionNames(): array
+            {
+                return ['from_names_method'];
+            }
+        };
+
+        $this->assertEquals(['from_names_method'], $model->resolveFirestoreCollections());
+    }
+
+    public function testMirrorToFirestoreWithMultipleCollections()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $attributes = ['id' => 1, 'name' => 'Test'];
+            protected $table = 'tests';
+
+            public function getKey()
+            {
+                return $this->attributes['id'];
+            }
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+
+            public function attributesToArray()
+            {
+                return $this->attributes;
+            }
+
+            public function getFirestoreCollectionNames(): array
+            {
+                return ['collection_a', 'collection_b'];
+            }
+        };
+
+        // Mock document references
+        $documentMockA = Mockery::mock('DocumentReference');
+        $documentMockB = Mockery::mock('DocumentReference');
+
+        // Mock collection references
+        $collectionMockA = Mockery::mock('CollectionReference');
+        $collectionMockA->shouldReceive('document')
+            ->once()
+            ->with(1)
+            ->andReturn($documentMockA);
+
+        $collectionMockB = Mockery::mock('CollectionReference');
+        $collectionMockB->shouldReceive('document')
+            ->once()
+            ->with(1)
+            ->andReturn($documentMockB);
+
+        // Mock batch
+        $batchMock = Mockery::mock('WriteBatch');
+        $batchMock->shouldReceive('set')
+            ->once()
+            ->with($documentMockA, ['id' => 1, 'name' => 'Test'])
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('set')
+            ->once()
+            ->with($documentMockB, ['id' => 1, 'name' => 'Test'])
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('commit')
+            ->once()
+            ->andReturn(true);
+
+        // Mock Firestore facade
+        $firestoreMock = Mockery::mock('alias:Firestore');
+        $firestoreMock->shouldReceive('batch')
+            ->once()
+            ->andReturn($batchMock);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_a')
+            ->andReturn($collectionMockA);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_b')
+            ->andReturn($collectionMockB);
+
+        $result = $model->mirrorToFirestore();
+
+        $this->assertSame($model, $result);
+    }
+
+    public function testDeleteFromFirestoreWithMultipleCollections()
+    {
+        $model = new class {
+            use HasFirestoreMirror;
+
+            protected $attributes = ['id' => 1, 'name' => 'Test'];
+            protected $table = 'tests';
+
+            public function getKey()
+            {
+                return $this->attributes['id'];
+            }
+
+            public function getTable()
+            {
+                return $this->table;
+            }
+
+            public function getFirestoreCollectionNames(): array
+            {
+                return ['collection_a', 'collection_b'];
+            }
+        };
+
+        // Mock document references
+        $documentMockA = Mockery::mock('DocumentReference');
+        $documentMockB = Mockery::mock('DocumentReference');
+
+        // Mock collection references
+        $collectionMockA = Mockery::mock('CollectionReference');
+        $collectionMockA->shouldReceive('document')
+            ->once()
+            ->with(1)
+            ->andReturn($documentMockA);
+
+        $collectionMockB = Mockery::mock('CollectionReference');
+        $collectionMockB->shouldReceive('document')
+            ->once()
+            ->with(1)
+            ->andReturn($documentMockB);
+
+        // Mock batch
+        $batchMock = Mockery::mock('WriteBatch');
+        $batchMock->shouldReceive('delete')
+            ->once()
+            ->with($documentMockA)
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('delete')
+            ->once()
+            ->with($documentMockB)
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('commit')
+            ->once()
+            ->andReturn(true);
+
+        // Mock Firestore facade
+        $firestoreMock = Mockery::mock('alias:Firestore');
+        $firestoreMock->shouldReceive('batch')
+            ->once()
+            ->andReturn($batchMock);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_a')
+            ->andReturn($collectionMockA);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_b')
+            ->andReturn($collectionMockB);
+
+        $result = $model->deleteFromFirestore();
+
+        $this->assertSame($model, $result);
+    }
 }

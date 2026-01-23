@@ -167,4 +167,143 @@ class FirestoreMirrorServiceProviderTest extends TestCase
         // Assert that the collection is returned for chaining
         $this->assertSame($collection, $result);
     }
+
+    public function testCollectionMacroWithMultipleCollectionsFromArray()
+    {
+        // Create a model that returns an array from getFirestoreCollectionName
+        $model = new class extends Model {
+            public function getFirestoreCollectionName()
+            {
+                return ['collection_a', 'collection_b'];
+            }
+
+            public function getFirestoreDocumentId()
+            {
+                return 'doc1';
+            }
+
+            public function toFirestoreDocument()
+            {
+                return ['id' => 'doc1', 'name' => 'Test'];
+            }
+        };
+
+        $collection = new Collection([$model]);
+
+        // Mock document references
+        $documentMockA = Mockery::mock('DocumentReference');
+        $documentMockB = Mockery::mock('DocumentReference');
+
+        // Mock collection references
+        $collectionMockA = Mockery::mock('CollectionReference');
+        $collectionMockA->shouldReceive('document')
+            ->once()
+            ->with('doc1')
+            ->andReturn($documentMockA);
+
+        $collectionMockB = Mockery::mock('CollectionReference');
+        $collectionMockB->shouldReceive('document')
+            ->once()
+            ->with('doc1')
+            ->andReturn($documentMockB);
+
+        // Mock batch - should receive set twice (once per collection)
+        $batchMock = Mockery::mock('WriteBatch');
+        $batchMock->shouldReceive('set')
+            ->twice()
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('commit')
+            ->once()
+            ->andReturn(true);
+
+        // Mock Firestore facade
+        $firestoreMock = Mockery::mock('alias:Firestore');
+        $firestoreMock->shouldReceive('batch')
+            ->once()
+            ->andReturn($batchMock);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_a')
+            ->andReturn($collectionMockA);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('collection_b')
+            ->andReturn($collectionMockB);
+
+        $result = $collection->mirrorToFirestore();
+
+        $this->assertSame($collection, $result);
+    }
+
+    public function testCollectionMacroWithResolveFirestoreCollections()
+    {
+        // Create a model that has resolveFirestoreCollections method
+        $model = new class extends Model {
+            public function getFirestoreCollectionName()
+            {
+                return 'ignored_collection';
+            }
+
+            public function resolveFirestoreCollections()
+            {
+                return ['resolved_a', 'resolved_b'];
+            }
+
+            public function getFirestoreDocumentId()
+            {
+                return 'doc1';
+            }
+
+            public function toFirestoreDocument()
+            {
+                return ['id' => 'doc1', 'name' => 'Test'];
+            }
+        };
+
+        $collection = new Collection([$model]);
+
+        // Mock document references
+        $documentMockA = Mockery::mock('DocumentReference');
+        $documentMockB = Mockery::mock('DocumentReference');
+
+        // Mock collection references
+        $collectionMockA = Mockery::mock('CollectionReference');
+        $collectionMockA->shouldReceive('document')
+            ->once()
+            ->with('doc1')
+            ->andReturn($documentMockA);
+
+        $collectionMockB = Mockery::mock('CollectionReference');
+        $collectionMockB->shouldReceive('document')
+            ->once()
+            ->with('doc1')
+            ->andReturn($documentMockB);
+
+        // Mock batch
+        $batchMock = Mockery::mock('WriteBatch');
+        $batchMock->shouldReceive('set')
+            ->twice()
+            ->andReturn($batchMock);
+        $batchMock->shouldReceive('commit')
+            ->once()
+            ->andReturn(true);
+
+        // Mock Firestore facade
+        $firestoreMock = Mockery::mock('alias:Firestore');
+        $firestoreMock->shouldReceive('batch')
+            ->once()
+            ->andReturn($batchMock);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('resolved_a')
+            ->andReturn($collectionMockA);
+        $firestoreMock->shouldReceive('collection')
+            ->once()
+            ->with('resolved_b')
+            ->andReturn($collectionMockB);
+
+        $result = $collection->mirrorToFirestore();
+
+        $this->assertSame($collection, $result);
+    }
 }
